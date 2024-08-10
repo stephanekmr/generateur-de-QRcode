@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRcode generator</title>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/master/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script> -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+
+<style>
+    body{
+        margin: 0;
+    }
+
+    div.page{
+        background-color: rgb(56, 51, 51);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* justify-content: center; */
+        width: 100%;
+        height: 100vh;
+    }
+
+    div.generator{
+        background-color: rgba(0, 0, 0, 0.219);
+        padding: 2rem;
+        width: 70%;
+        min-height: 25rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0px 0px 11px 0px rgba(48, 47, 47, 0.75);
+    }
+
+    div.link{
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    input.link{
+        width: 50%;
+        min-width: 18rem;
+        padding: 12px;
+        font-size: 15.25px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    button.generer{
+        background-color: rgb(0, 47, 100);
+        color: white;
+        margin-top: 1.5rem;
+        border: none;
+        border-radius: 5px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-size: 17px;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    div.qrcode{
+        /* display: none; */
+        margin-top: 4rem;
+    }
+
+    div.qrcodeZone{
+        display: flex;
+        align-items: center;
+        display: none;
+        padding-left: 7rem;
+    }
+
+    div.toolsdiv{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    div.tools{
+        padding: 3px 4.5px;
+        border-radius: 3px;
+        background-color: #e4dede;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: -2.5rem 0px 0px 1rem;
+    }
+    span.tools{
+        font-size: 17px;
+        cursor: pointer;
+    }
+    span.tools:hover{
+        transform: scaleX(1.15);
+        background-color: rgb(255, 255, 255);
+    }
+    .firsts{ margin-right: 15px; }
+
+    small.copy{
+        color: beige;
+        position: absolute;
+        margin: -4rem 0rem 0rem -1rem;
+        display: none;
+    }
+
+
+
+
+
+    div.loader{
+        margin-top: 4rem;
+        display: none;
+    }
+    span.loader {
+        width: 60px;
+        height: 60px;
+        border: 3px solid #FFF;
+        border-radius: 50%;
+        display: inline-block;
+        /* position: relative; */
+        box-sizing: border-box;
+        animation: rotation 1s linear infinite;
+    }
+    span.loader::after {
+        content: '';  
+        box-sizing: border-box;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 3px solid;
+        border-color: #FF3D00 transparent;
+    }
+    
+    @keyframes rotation {
+        0% {
+        transform: rotate(0deg);
+        }
+        100% {
+        transform: rotate(360deg);
+        }
+    } 
+
+    small.ref{
+        color: white;
+        position: fixed;
+        bottom: 0.5rem;
+        right: 1.75rem;
+    }
+</style>
+
+<body>
+
+    <div class="page">
+        <h1 style="color: white; padding-inline: 1rem;">Générateur de QRcode gratuit</h1>
+
+        <div class="generator">
+            <div class="link">
+                <input type="text" id="linkValue" class="link" placeholder="Saisir ou coller le lien ...">
+            </div>
+            <button class="generer" id="genererBtn" onclick="genererQRcode()">Generer un QRcode</button>
+            <div class="loader" id="loader">
+                <span class="loader"></span>
+            </div>
+
+            <div class="qrcodeZone" id="qrcodeZone">
+                <div class="qrcode" id="qrcode">
+                </div>
+                <div class="toolsdiv">
+                    <div>
+                        <small class="copy" id="copier">Copié ✔</small>
+                    </div>
+                    <div class="tools">
+                        <span class="material-icons firsts tools" onclick="saveQRcode()">download</span>
+                        <span class="material-icons firsts tools" onclick="copyQRcode()">content_copy</span>
+                        <span class="material-icons tools" onclick="deleteQRcode()">delete</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <small class="ref">© Stephane_kmr</small>
+
+    </div>
+
+
+    
+</body>
+
+<script>
+
+    const linkInput = document.getElementById('linkValue')
+    const genererButton = document.getElementById('genererBtn')
+    const qrcodeElmt = document.getElementById('qrcode')
+    const loader = document.getElementById('loader')
+    const qrcodeZone = document.getElementById('qrcodeZone')
+    const copierMSG = document.getElementById('copier')
+    var qrcodeCopy = null
+
+    function deleteQRcode() {
+        qrcodeZone.style.display = 'none'
+        qrcodeElmt.innerHTML=""
+    }
+
+    function genererQRcode () {
+        deleteQRcode()
+
+        const lien = linkInput.value
+        if (lien) {
+            // alert(lien)
+            loader.style.display='block'
+            const qrcode = new QRCode(
+                qrcodeElmt, {
+                    text: lien,
+                    width: 150,
+                    height: 150,
+                    margin: 15,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                }
+            )
+            qrcodeCopy=qrcode
+
+            setTimeout(() => {
+                loader.style.display = 'none'
+                qrcodeZone.style.display = 'flex'
+            },1000)
+        }
+
+        else {
+            alert ('Veuillez entrer un lien valide !!')
+        }
+    };
+
+
+
+    function copyQRcode() {
+        copierMSG.style.display = 'block'
+        setTimeout(() => {
+            copierMSG.style.display = 'none'
+        }, 600)
+        
+        const copy = document.querySelector('#qrcode')
+        copy.toBlob(blob => {
+            navigator.clipboard.write([
+                new CLipboardItem({'image.png': blob})
+            ])
+        })
+
+    }
+
+
+    function saveQRcode() {
+        const QRcode_pdf = {
+            content: [
+                // {
+                //     text: 'Code QR Généré :',
+                //     fontSIze: 24,
+                //     margin: [0,10,0,0]
+                // },
+                {
+                    qr: 'Votre texte ou lien ici', // Remplacez par votre propre texte ou lien
+                    fit: 120, // Taille du code QR (en pixels)
+                    alignment: 'center', // Alignement du code QR
+                    margin: [0, 15], // Marge autour du code QR
+                }
+            ],
+            pageSize: 'A4',
+            pageMargins: [20,20,20,20]
+        };
+
+        pdfMake.createPdf(QRcode_pdf).download('file.pdf')
+    }
+
+</script>
+
+</html>
